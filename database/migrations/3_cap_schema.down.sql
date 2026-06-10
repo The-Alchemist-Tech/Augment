@@ -1,0 +1,5 @@
+ALTER TABLE cap DROP FOREIGN KEY fk_cap_seller;
+ALTER TABLE cap DROP FOREIGN KEY fk_cap_buyer;
+ALTER TABLE cap DROP FOREIGN KEY fk_cap_fund;
+DROP INDEX IF EXISTS idx_cap_fund;
+DROP TABLE IF EXISTS cap;

@@ -1,0 +1,3 @@
+DROP INDEX IF EXISTS idx_funds_name;
+DROP INDEX IF EXISTS idx_funds_id;
+DROP TABLE IF EXISTS funds;
