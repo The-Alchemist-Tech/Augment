@@ -4,22 +4,17 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"time"
+	"fmt"
 
 	db "augment/database"
+	fundModel "augment/models"
 )
 
-type Fund struct {
-	ID   			int       	`json:"id"`
-	Name 			string    	`json:"name"`
-	Units			int			`json:"units"`
-	CreatedOn 		time.Time 	`json:"created_on"`
-	LastModified	time.Time 	`json:"last_modified"`
-}
-
-func (fund *Fund) CreateFund(w http.ResponseWriter, r *http.Request) {
+func CreateFund(w http.ResponseWriter, r *http.Request) {
 	// Decode the request body directly into the struct
-	err := json.NewDecoder(r.Body).Decode(&fund)
+	fund := &fundModel.Fund{}
+
+	err := json.NewDecoder(r.Body).Decode(fund)
 	if err != nil {
 		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
 		return
@@ -27,14 +22,43 @@ func (fund *Fund) CreateFund(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	// Generic db.Insert
-	rows, err := db.Insert("funds", "INSERT INTO `test` (name) VALUES ('myname')")
+	// Insert the new fund into the database
+	id, err := db.InsertFund(fund.Name, fund.Units)
 	if err != nil {
-		log.Fatal("Database INSERT failed")
-	} else if rows == 0 {
-		
+		http.Error(w, "Failed to create fund", http.StatusInternalServerError)
+		return
 	}
 
-	log.Printf("DB updated: rows affected: %d, ")
-	w.WriteHeader(http.StatusOK)
+	log.Printf("New fund created with ID: %d", id)
+
+	// Get new fund object to return in response - returning just ID will not show accurate timestamps
+	// for the created fund
+	newFund, err := GetFundByID(id)
+	if err != nil {
+		http.Error(w, "Failed to retrieve created fund", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(newFund)
+}
+
+// TODO: handler for API call to get fund by ID and validate, then call the below function
+
+func GetFundByID(id int64) (fund *fundModel.Fund, err error) {
+	log.Printf("Retrieving fund with ID: %d", id)
+
+	// Get the fund from the database using the generic GetResourceByID function
+	// Returns any type for use with multiple tables, so we need to cast it to a Fund below
+	res, err := db.GetResourceByID("funds", id)
+	if err != nil {
+		return nil, err
+	}
+
+	fund, ok := res.(*fundModel.Fund)
+	if !ok {
+		return nil, fmt.Errorf("Failed to cast resource to Fund model for ID %d", id)
+	}
+
+	return fund, nil
 }
