@@ -21,14 +21,20 @@ func CreateFund(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = fund.Validate()
+	if err != nil {
+		errors.WriteJSONError(w, http.StatusBadRequest, fmt.Sprintf("Validation error: %s", err.Error()))
+		return
+	}
+
 	defer r.Body.Close()
 
 	// Insert the new fund into the database
-	id, err := db.InsertFund(fund.Name, fund.Units)
-	if err != nil && err != db.ErrDuplicateFund {
+	id, err := db.InsertResource(fund)
+	if err != nil && err != db.ErrDuplicate {
 		errors.WriteJSONError(w, http.StatusInternalServerError, "Failed to create fund")
 		return
-	} else if err == db.ErrDuplicateFund {
+	} else if err == db.ErrDuplicate {
 		errors.WriteJSONError(w, http.StatusConflict, fmt.Sprintf("Fund with name %s already exists", fund.Name))
 		return
 	}
@@ -48,7 +54,7 @@ func CreateFund(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(newFund)
 }
 
-// TODO: handler for API call to get fund by ID and validate, then call the below function
+// TODO in real-world app: handler for API call to get fund by ID and validate, then call the below function
 
 func GetFundByID(id int64) (fund *fundModel.Fund, err error) {
 	log.Printf("Retrieving fund with ID: %d", id)

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	fund "augment/fund"
+	investor "augment/investor"
 
 	"github.com/gorilla/mux"
 )
@@ -18,4 +19,12 @@ func (app *App) SetupRouter() {
 		Methods("POST").
 		Path("/fund/create").
 		HandlerFunc(fund.CreateFund)
+	app.Router.
+		Methods("POST").
+		Path("/investor/create").
+		HandlerFunc(investor.CreateInvestor)
+	app.Router.
+		Methods("POST").
+		Path("/transaction/create").
+		HandlerFunc(cap.CreateTransaction)
 }
