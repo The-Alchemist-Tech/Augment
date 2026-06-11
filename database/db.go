@@ -8,6 +8,7 @@ import (
 	"time"
 	"context"
 	"log"
+	"errors"
 
 	fundModel "augment/models"
 	
@@ -18,6 +19,9 @@ import (
 )
 
 var database *sql.DB
+
+// Error for duplicate fund name so the handler can return the proper status code
+var ErrDuplicateFund = errors.New("duplicate fund")
 
 type DBArgs struct {
 	Host string
@@ -141,11 +145,24 @@ func InsertFund(name string, units int) (int64, error) {
 	tx, err := database.BeginTx(ctx, nil)
     if err != nil { 
 		log.Printf("Failed to begin transaction: %v", err)
-		return 0,err 
+		return 0, err 
 	}
     defer tx.Rollback()
 
-	// TODO: Check if a fund with the same name already exists and return an error if so
+	// Check if a fund with the same name already exists and return an error if so
+	var existingID int64
+	err = tx.QueryRowContext(ctx, "SELECT id FROM funds WHERE name = ?", name).Scan(&existingID)
+	if err != nil && err != sql.ErrNoRows {
+		log.Printf("Failed to check for existing fund: %v", err)
+		return 0, err
+	}
+
+	// Existing fund found with same name found, return error
+	if err == nil {
+		// Custom error to check in fund handler to return proper status and message. 
+		log.Printf("Duplicate fund name detected: %s", name)
+		return 0, ErrDuplicateFund
+	}
 
 	query := "INSERT INTO funds (name, units) VALUES (?, ?)"
 
