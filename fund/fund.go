@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"fmt"
 
+	errors "augment/errors"
 	db "augment/database"
 	fundModel "augment/models"
 )
@@ -16,7 +17,7 @@ func CreateFund(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(fund)
 	if err != nil {
-		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+		errors.WriteJSONError(w, http.StatusBadRequest, "Invalid JSON payload")
 		return
 	}
 
@@ -24,10 +25,14 @@ func CreateFund(w http.ResponseWriter, r *http.Request) {
 
 	// Insert the new fund into the database
 	id, err := db.InsertFund(fund.Name, fund.Units)
-	if err != nil {
-		http.Error(w, "Failed to create fund", http.StatusInternalServerError)
+	if err != nil && err != db.ErrDuplicateFund {
+		errors.WriteJSONError(w, http.StatusInternalServerError, "Failed to create fund")
+		return
+	} else if err == db.ErrDuplicateFund {
+		errors.WriteJSONError(w, http.StatusConflict, fmt.Sprintf("Fund with name %s already exists", fund.Name))
 		return
 	}
+
 
 	log.Printf("New fund created with ID: %d", id)
 
@@ -35,7 +40,7 @@ func CreateFund(w http.ResponseWriter, r *http.Request) {
 	// for the created fund
 	newFund, err := GetFundByID(id)
 	if err != nil {
-		http.Error(w, "Failed to retrieve created fund", http.StatusInternalServerError)
+		errors.WriteJSONError(w, http.StatusInternalServerError, "Failed to retrieve created fund")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

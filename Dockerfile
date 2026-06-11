@@ -11,6 +11,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o app ./main.go
 
 FROM alpine:3.18
 
+RUN apk add --no-cache mysql-client
 RUN apk --no-cache add ca-certificates
 
 WORKDIR /app
