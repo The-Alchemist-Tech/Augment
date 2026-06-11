@@ -2,8 +2,6 @@ package augment
 
 import (
 	"database/sql"
-	"log"
-	"net/http"
 
 	fund "augment/fund"
 

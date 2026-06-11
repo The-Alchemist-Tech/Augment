@@ -6,21 +6,23 @@ CREATE TABLE `cap` (
   `units` DECIMAL(14,4) NOT NULL,
   `created_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `last_modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  PRIMARY KEY (`id`),
 
--- Define Foreign Keys
-CONSTRAINT fk_cap_fund 
+  -- Define Foreign Keys
+  CONSTRAINT fk_cap_fund 
         FOREIGN KEY (fund) 
-        REFERENCES funds(id)
+        REFERENCES funds(id),
 
-CONSTRAINT fk_cap_buyer 
+  CONSTRAINT fk_cap_buyer 
         FOREIGN KEY (buyer) 
-        REFERENCES investors(id)
+        REFERENCES investors(id),
 
-CONSTRAINT fk_cap_seller 
+  CONSTRAINT fk_cap_seller 
         FOREIGN KEY (seller) 
         REFERENCES investors(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Index on queried fields
+-- I would add indexes on fund, buyer, and seller as these are
+-- likely to be used in queries in a more full featured app
 CREATE INDEX idx_cap_fund ON cap(fund);

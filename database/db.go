@@ -6,12 +6,18 @@ import (
 	"os"
     "path/filepath"
 	"time"
+	"context"
+	"log"
+
+	fundModel "augment/models"
 	
 	"github.com/golang-migrate/migrate/v4"
     "github.com/golang-migrate/migrate/v4/database/mysql"
     _ "github.com/golang-migrate/migrate/v4/source/file"
     _ "github.com/go-sql-driver/mysql"
 )
+
+var database *sql.DB
 
 type DBArgs struct {
 	Host string
@@ -24,6 +30,7 @@ type DBArgs struct {
 const (
 	maxReties = 5
 	retryDelay = 2 * time.Second
+	timeout = 10 * time.Second
 )
 
 func CreateDatabase() (*sql.DB, error) {
@@ -34,7 +41,7 @@ func CreateDatabase() (*sql.DB, error) {
 		DBargs.Password, 
 		DBargs.Host, 
 		DBargs.Port, 
-		DBargs.Name
+		DBargs.Name,
 	)
 
 	// Open DB connection
@@ -50,6 +57,9 @@ func CreateDatabase() (*sql.DB, error) {
 			if migrationErr := migrateDatabase(db); migrationErr != nil {
 				return nil, migrationErr
 			}
+
+			// Set global database variable and return connection
+			database = db
 			return db, nil
 		}
 
@@ -121,4 +131,70 @@ func migrateDatabase(db *sql.DB) error {
     }
 
 	return nil
+}
+
+func InsertFund(name string, units int) (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	log.Println("Starting InsertFund transaction")
+	tx, err := database.BeginTx(ctx, nil)
+    if err != nil { 
+		log.Printf("Failed to begin transaction: %v", err)
+		return 0,err 
+	}
+    defer tx.Rollback()
+
+	// TODO: Check if a fund with the same name already exists and return an error if so
+
+	query := "INSERT INTO funds (name, units) VALUES (?, ?)"
+
+	res, err := tx.ExecContext(ctx, query, name, units)
+	if err != nil {
+		log.Printf("Failed to execute insert query: %v", err)
+		return 0, err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		log.Printf("Failed to get last inserted ID: %v", err)
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
+		return 0, err
+	}
+
+	return id, nil
+}
+
+func GetResourceByID(table string, id int64) (any, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	log.Printf("Retrieving resource from table %s with ID: %d", table, id)
+
+	switch table {
+	case "funds":
+		log.Printf("SWITCH: Querying funds table for ID %d", id)
+		// Limit to fields we want in real world, but * works for this simple app
+		query := "SELECT * FROM funds WHERE id = ?"
+		row := database.QueryRowContext(ctx, query, id)
+
+		f := &fundModel.Fund{}
+
+		if err := row.Scan(&f.ID, &f.Name, &f.Units, &f.CreatedOn, &f.LastModified); err != nil {
+			log.Printf("Failed to scan row for ID %d: %v", id, err)
+			return nil, err
+		}
+
+		return f, nil
+	default:
+		log.Printf("Invalid table name: %s", table)
+		return nil, fmt.Errorf("Invalid table name: %s", table)
+	}
+
+	log.Printf("Resource not found in table %s with ID %d", table, id)
+	return nil, fmt.Errorf("Resource not found in table %s with ID %d", table, id)
 }

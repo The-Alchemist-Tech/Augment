@@ -1,4 +1,6 @@
-git services:
+version: "2.4"
+
+services:
   # MySQL Database Service
   db:
     image: mysql:8.0
@@ -12,6 +14,12 @@ git services:
       - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   # Your Application Service
   app:
@@ -28,7 +36,17 @@ git services:
       - DB_USER=user
       - DB_PASSWORD=userpassword
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    # Wait for the database to be ready before starting the application
+    # depends_on is not reliable enough, so we use a custom command to wait for the database
+    command: >
+      sh -c '
+        until mysqladmin ping -h db -u root -prootpassword >/dev/null 2>&1;
+        do sleep 20;
+        done;
+        /app/app
+      '
 
 volumes:
   db_data:
