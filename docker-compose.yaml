@@ -18,8 +18,8 @@ services:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -prootpassword"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 30s
+      retries: 20
+      start_period: 120s
 
   # Your Application Service
   app:

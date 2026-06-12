@@ -5,6 +5,7 @@ import (
 
 	fund "augment/fund"
 	investor "augment/investor"
+	cap "augment/cap"
 
 	"github.com/gorilla/mux"
 )
@@ -25,6 +26,14 @@ func (app *App) SetupRouter() {
 		HandlerFunc(investor.CreateInvestor)
 	app.Router.
 		Methods("POST").
-		Path("/transaction/create").
-		HandlerFunc(cap.CreateTransaction)
+		Path("/transfer/create").
+		HandlerFunc(cap.CreateTransfer)
+	app.Router.
+		Methods("GET").
+		Path("/cap/fund").
+		HandlerFunc(cap.GetFundCap)
+	app.Router.
+		Methods("GET").
+		Path("/cap/fund/history").
+		HandlerFunc(cap.GetFundCapHistory)
 }

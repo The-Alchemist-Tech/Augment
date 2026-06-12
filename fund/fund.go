@@ -8,12 +8,12 @@ import (
 
 	errors "augment/errors"
 	db "augment/database"
-	fundModel "augment/models"
+	models "augment/models"
 )
 
 func CreateFund(w http.ResponseWriter, r *http.Request) {
 	// Decode the request body directly into the struct
-	fund := &fundModel.Fund{}
+	fund := &models.Fund{}
 
 	err := json.NewDecoder(r.Body).Decode(fund)
 	if err != nil {
@@ -32,13 +32,12 @@ func CreateFund(w http.ResponseWriter, r *http.Request) {
 	// Insert the new fund into the database
 	id, err := db.InsertResource(fund)
 	if err != nil && err != db.ErrDuplicate {
-		errors.WriteJSONError(w, http.StatusInternalServerError, "Failed to create fund")
+		errors.WriteJSONError(w, http.StatusInternalServerError,  fmt.Sprintf("Failed to create fund: %v", err))
 		return
 	} else if err == db.ErrDuplicate {
 		errors.WriteJSONError(w, http.StatusConflict, fmt.Sprintf("Fund with name %s already exists", fund.Name))
 		return
 	}
-
 
 	log.Printf("New fund created with ID: %d", id)
 
@@ -49,14 +48,14 @@ func CreateFund(w http.ResponseWriter, r *http.Request) {
 		errors.WriteJSONError(w, http.StatusInternalServerError, "Failed to retrieve created fund")
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(newFund)
 }
 
-// TODO in real-world app: handler for API call to get fund by ID and validate, then call the below function
-
-func GetFundByID(id int64) (fund *fundModel.Fund, err error) {
+// In real-world app: handler for API call to get fund by ID and validate, then call the below function
+func GetFundByID(id int64) (fund *models.Fund, err error) {
 	log.Printf("Retrieving fund with ID: %d", id)
 
 	// Get the fund from the database using the generic GetResourceByID function
@@ -66,7 +65,7 @@ func GetFundByID(id int64) (fund *fundModel.Fund, err error) {
 		return nil, err
 	}
 
-	fund, ok := res.(*fundModel.Fund)
+	fund, ok := res.(*models.Fund)
 	if !ok {
 		return nil, fmt.Errorf("Failed to cast resource to Fund model for ID %d", id)
 	}

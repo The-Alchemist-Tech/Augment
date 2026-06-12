@@ -24,19 +24,19 @@ func (i *Investor) String() string {
 
 func (i *Investor) Validate() error {
 	if strings.TrimSpace(i.Username) == "" {
-		return fmt.Errorf("Username is required")
+		return fmt.Errorf("Username is required.")
 	}
 	if strings.TrimSpace(i.Email) == "" {
-		return fmt.Errorf("Email is required")
+		return fmt.Errorf("Email is required.")
 	}
 	if _, err := mail.ParseAddress(i.Email); err != nil {
-		return fmt.Errorf("Email is invalid")
+		return fmt.Errorf("Email is invalid.")
 	}
 	if strings.TrimSpace(i.FirstName) == "" {
-		return fmt.Errorf("FirstName is required")
+		return fmt.Errorf("FirstName is required.")
 	}
 	if strings.TrimSpace(i.LastName) == "" {
-		return fmt.Errorf("LastName is required")
+		return fmt.Errorf("LastName is required.")
 	}
 	return nil
 }

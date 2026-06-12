@@ -33,6 +33,11 @@ to, who transferred what to whom, and when it occurred.
 
 ## How To Use This Application
 
+### Conventions
+- Seller means the one transferring units. Buyer is the receiver of th units. In a real transfer I assume a price would be attached, so I went with these terms rather than "giver" and "receiver" or "from" and "to".
+- A 0 ID for the seller indicates the units came from the fund - IE given by the company. This is only used for DB setup so we have investors with units to play around with. A request setting the seller as 0 ID is guarded against.
+
+
 ### Return Format
 
 ## Improvements I Would Make For A Production Version
@@ -44,3 +49,5 @@ to, who transferred what to whom, and when it occurred.
    - Probably need to confirm more info from the seller
 - Need cost info on transfers
    - Pricing/most recent cost of transaction on the fund?
+- I would move some of the validations done in the db file (checking if a fund with the same name, a username, or email exists already) and into validations like cap does.
+- Add Swagger documentation

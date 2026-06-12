@@ -8,12 +8,12 @@ import (
 
 	errors "augment/errors"
 	db "augment/database"
-	investorModel "augment/models"
+	models "augment/models"
 )
 
 func CreateInvestor(w http.ResponseWriter, r *http.Request) {
 	// Decode the request body directly into the struct
-	investor := &investorModel.Investor{}
+	investor := &models.Investor{}
 
 	err := json.NewDecoder(r.Body).Decode(investor)
 	if err != nil {
@@ -64,7 +64,7 @@ func CreateInvestor(w http.ResponseWriter, r *http.Request) {
 // TODO in real-world app: handler for API call to get investor by ID and validate
 // Then call the below function to retrieve the investor and return in response
 
-func GetInvestorByID(id int64) (investor *investorModel.Investor, err error) {
+func GetInvestorByID(id int64) (investor *models.Investor, err error) {
 	log.Printf("Retrieving investor with ID: %d", id)
 
 	// Get the investor from the database using the generic GetResourceByID function
@@ -74,7 +74,7 @@ func GetInvestorByID(id int64) (investor *investorModel.Investor, err error) {
 		return nil, err
 	}
 
-	investor, ok := res.(*investorModel.Investor)
+	investor, ok := res.(*models.Investor)
 	if !ok {
 		return nil, fmt.Errorf("Failed to cast resource to Investor model for ID %d", id)
 	}
