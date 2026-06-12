@@ -26,13 +26,11 @@ func (f *Fund) String() string {
 
 func (f *Fund) Validate() error {
 	if strings.TrimSpace(f.Name) == "" {
-		return fmt.Errorf("Name is required")
+		return fmt.Errorf("Name is required.")
 	}
-	if f.Units == nil {
-		return fmt.Errorf("Units is required")
+	if f.Units == nil || *f.Units <= 0 {
+		return fmt.Errorf("Units must be present and greater than zero.")
 	}
-	if *f.Units <= 0 {
-		return fmt.Errorf("Units must be greater than zero")
-	}
+
 	return nil
 }

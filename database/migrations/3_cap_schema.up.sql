@@ -13,7 +13,7 @@ CREATE TABLE `cap` (
         FOREIGN KEY (fund) 
         REFERENCES funds(id),
 
-  CONSTRAINT fk_cap_buyer 
+  CONSTRAINT fk_cap_buyer  
         FOREIGN KEY (buyer) 
         REFERENCES investors(id),
 
