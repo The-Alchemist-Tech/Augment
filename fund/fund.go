@@ -17,7 +17,8 @@ func CreateFund(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(fund)
 	if err != nil {
-		errors.WriteJSONError(w, http.StatusBadRequest, "Invalid JSON payload")
+		log.Printf("Invalid JSON payload: %v", err)
+		errors.WriteJSONError(w, http.StatusBadRequest, "Invalid JSON payload - must include name as a string and units as an integer")
 		return
 	}
 

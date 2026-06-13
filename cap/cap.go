@@ -28,7 +28,7 @@ func CreateTransfer(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(cap)
 	if err != nil {
 		log.Printf("Invalid JSON payload: %v", err)
-		errors.WriteJSONError(w, http.StatusBadRequest, fmt.Sprintf("Invalid JSON payload: %v", err))
+		errors.WriteJSONError(w, http.StatusBadRequest, "Invalid JSON payload - include fund, buyer, and seller as integers and units as a number")
 		return
 	}
 
@@ -86,7 +86,14 @@ func GetFundCap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var capTable []models.InvestorCapEntry
+	// Check that the fund exists
+	_, err = fund.GetFundByID(fundID)
+	if err != nil {
+		errors.WriteJSONError(w, http.StatusNotFound, fmt.Sprintf("Fund with ID %d does not exist.", fundID))
+		return
+	}
+
+	capTable := []models.InvestorCapEntry{}
 
 	capTable, err = db.GetCapTableForFund(fundID)
 	if err != nil {
@@ -111,7 +118,14 @@ func GetFundCapHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var capHistory []models.CapHistoryEntry
+	// Check that the fund exists
+	_, err = fund.GetFundByID(fundID)
+	if err != nil {
+		errors.WriteJSONError(w, http.StatusNotFound, fmt.Sprintf("Fund with ID %d does not exist.", fundID))
+		return
+	}
+
+	capHistory := []models.CapHistoryEntry{}
 
 	capHistory, err = db.GetCapHistoryForFund(fundID)
 	if err != nil {
