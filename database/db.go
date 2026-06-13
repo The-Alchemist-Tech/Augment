@@ -40,8 +40,16 @@ const (
 	timeout    = 10 * time.Second
 )
 
-func CreateDatabase() (*sql.DB, error) {
+func CreateDatabase(dbName ...string) (*sql.DB, error) {
 	DBargs := getDatabaseArgs()
+
+	// If a name is provided, override the default and ensure the DB exists
+	if len(dbName) > 0 && dbName[0] != "" {
+		DBargs.Name = dbName[0]
+		if err := ensureDatabaseExists(DBargs); err != nil {
+			return nil, err
+		}
+	}
 
 	connectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&collation=utf8mb4_unicode_ci&parseTime=true&multiStatements=true",
 		DBargs.User,
@@ -77,6 +85,33 @@ func CreateDatabase() (*sql.DB, error) {
 	}
 
 	return nil, fmt.Errorf("Failed to connect to database after %d attempts: %v", maxReties, err)
+}
+
+// ensureDatabaseExists connects as root to create the named database if it
+// doesn't exist, then grants the app user full access to it.
+func ensureDatabaseExists(args DBArgs) error {
+	rootPassword := os.Getenv("MYSQL_ROOT_PASSWORD")
+	if rootPassword == "" {
+		rootPassword = "rootpassword"
+	}
+
+	// Connect without specifying a database so we can create one
+	connStr := fmt.Sprintf("root:%s@tcp(%s:%s)/", rootPassword, args.Host, args.Port)
+	db, err := sql.Open("mysql", connStr)
+	if err != nil {
+		return fmt.Errorf("failed to connect as root: %v", err)
+	}
+	defer db.Close()
+
+	if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS " + args.Name); err != nil {
+		return fmt.Errorf("failed to create database %s: %v", args.Name, err)
+	}
+
+	if _, err := db.Exec(fmt.Sprintf("GRANT ALL PRIVILEGES ON %s.* TO '%s'@'%%'", args.Name, args.User)); err != nil {
+		return fmt.Errorf("failed to grant privileges on %s: %v", args.Name, err)
+	}
+
+	return nil
 }
 
 func getDatabaseArgs() (args DBArgs) {
@@ -258,7 +293,7 @@ func InsertCapTx(ctx context.Context, tx *sql.Tx, cap *models.Cap) (int64, error
 
 	query := "INSERT INTO cap (fund, buyer, seller, units) VALUES (?, ?, ?, ?)"
 
-	res, err := tx.ExecContext(ctx, query, cap.Fund, cap.Buyer, cap.Seller, cap.Units)
+	res, err := tx.ExecContext(ctx, query, *cap.Fund, *cap.Buyer, *cap.Seller, *cap.Units)
 	if err != nil {
 		log.Printf("Failed to execute cap insert: %v", err)
 		return 0, err
@@ -330,7 +365,7 @@ func GetResourceByID(table string, id int64) (any, error) {
 		c.Seller = new(int)
 		c.Units = new(decimal.Decimal)
 
-		if err := row.Scan(&c.ID, c.Fund, c.Buyer, c.Seller, c.Units, &c.CreatedOn, &c.LastModified); err != nil {
+		if err := row.Scan(&c.ID, c.Fund, c.Buyer, c.Seller, c.Units, &c.CreatedOn); err != nil {
 			log.Printf("Failed to scan row for ID %d: %v", id, err)
 			return nil, err
 		}
@@ -363,4 +398,97 @@ func GetFundUnitsForInvestor(fund int64, investorID int64) (decimal.Decimal, err
 	}
 
 	return netUnits, nil
+}
+
+func GetCapTableForFund(id int64) ([]models.InvestorCapEntry, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	var capTable []models.InvestorCapEntry
+
+	// Aggregate in SQL as it's faster than code
+	// We get the investor_id from buyer and count units as positive, then sellers and count units as negative
+	// UNION ALL keeps the 2 queries for buyer and seller together and preserves duplicates so we
+	// can capture buyer and seller on the same row.
+	// Join to investors table to get the investor's first and last name to return
+	// Get all but our fund investor that we used to give others units in the migrations - it is not necessary
+	// Then group rows by id - first, and last name must be part of that grouping too, but it stays grouped by ID.
+	// Concatenate first and last name, SUM all units and find the last created_on value.
+	query := `
+		SELECT
+			CONCAT(i.first_name, ' ', i.last_name) AS investor_name,
+			SUM(t.signed_units) AS net_units,
+			MAX(t.created_on) AS latest_activity
+		FROM (
+			SELECT buyer AS investor_id, units AS signed_units, created_on FROM cap WHERE fund = ?
+			UNION ALL
+			SELECT seller AS investor_id, -units AS signed_units, created_on FROM cap WHERE fund = ?
+		) AS t
+		JOIN investors i ON i.id = t.investor_id
+		WHERE i.username != 'fund'
+		GROUP BY t.investor_id, i.first_name, i.last_name`
+
+	rows, err := database.QueryContext(ctx, query, id, id)
+	if err != nil {
+		log.Printf("Fund cap table query failed: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var current models.InvestorCapEntry
+		err = rows.Scan(&current.InvestorName, &current.Units, &current.LastChanged)
+		if err != nil {
+			log.Printf("Failed to scan returned row from cap table query: %v", err)
+			return nil, err
+		}
+		capTable = append(capTable, current)
+	}
+
+	return capTable, nil
+}
+
+func GetCapHistoryForFund(id int64) ([]models.CapHistoryEntry, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	var capHistory []models.CapHistoryEntry
+
+	// Join investors twice — once for buyer, once for seller — to get names instead of IDs.
+	// Do not exclude the seed investor (username='fund') here so the history shows how initial units were distributed.
+	query := `
+		SELECT
+			c.fund,
+			CONCAT(b.first_name, ' ', b.last_name) AS buyer_name,
+			CONCAT(s.first_name, ' ', s.last_name) AS seller_name,
+			c.units,
+			c.created_on
+		FROM cap c
+		JOIN investors b ON b.id = c.buyer
+		JOIN investors s ON s.id = c.seller
+		WHERE c.fund = ?
+		ORDER BY c.created_on ASC`
+
+	rows, err := database.QueryContext(ctx, query, id)
+	if err != nil {
+		log.Printf("Cap table history query failed: %v", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var current models.CapHistoryEntry
+		err = rows.Scan(&current.Fund, &current.Buyer, &current.Seller, &current.Units, &current.CreatedOn)
+		if err != nil {
+			log.Printf("Failed to scan returned row from cap table history query: %v", err)
+			return nil, err
+		}
+		capHistory = append(capHistory, current)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return capHistory, nil
 }

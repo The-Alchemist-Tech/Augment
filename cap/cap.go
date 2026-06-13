@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	db "augment/database"
 	errors "augment/errors"
@@ -75,15 +76,53 @@ func CreateTransfer(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetFundCap(w http.ResponseWriter, r *http.Request) {
+	log.Println("Starting get fund cap request")
+
+	// Parse incoming string value to int64
+	fundID, err := strconv.ParseInt(r.URL.Query().Get("id"), 10, 64)
+	if err != nil {
+		log.Printf("Failed to parse fund ID: %v", err)
+		errors.WriteJSONError(w, http.StatusBadRequest, "Missing or invalid query parameter: 'id' must be a valid integer (e.g. /cap/fund?id=1)")
+		return
+	}
+
+	var capTable []models.InvestorCapEntry
+
+	capTable, err = db.GetCapTableForFund(fundID)
+	if err != nil {
+		log.Printf("Failed to get cap table for fund ID: %v", err)
+		errors.WriteJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get cap table for fund ID: %v", err))
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode("")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(capTable)
 }
 
 func GetFundCapHistory(w http.ResponseWriter, r *http.Request) {
+	log.Println("Starting get fund cap history request")
+
+	// Parse incoming string value to int64
+	fundID, err := strconv.ParseInt(r.URL.Query().Get("id"), 10, 64)
+	if err != nil {
+		log.Printf("Failed to parse fund ID: %v", err)
+		errors.WriteJSONError(w, http.StatusBadRequest, "Missing or invalid query parameter: 'id' must be a valid integer (e.g. /cap/fund?id=1)")
+		return
+	}
+
+	var capHistory []models.CapHistoryEntry
+
+	capHistory, err = db.GetCapHistoryForFund(fundID)
+	if err != nil {
+		log.Printf("Failed to get cap table history for fund ID: %v", err)
+		errors.WriteJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get cap table for fund ID: %v", err))
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode("")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(capHistory)
 }
 
 func validateInput(c *models.Cap) error {

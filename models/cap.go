@@ -9,13 +9,26 @@ import (
 )
 
 type Cap struct {
-	ID           int              `json:"id"`
-	Fund         *int             `json:"fund"`
-	Buyer        *int             `json:"buyer"`
-	Seller       *int             `json:"seller"`
-	Units        *decimal.Decimal `json:"units"`
-	CreatedOn    time.Time        `json:"created_on"`
-	LastModified time.Time        `json:"last_modified"`
+	ID        int              `json:"id"`
+	Fund      *int             `json:"fund"`
+	Buyer     *int             `json:"buyer"`
+	Seller    *int             `json:"seller"`
+	Units     *decimal.Decimal `json:"units"`
+	CreatedOn time.Time        `json:"created_on"`
+}
+
+type InvestorCapEntry struct {
+	InvestorName    string           	`json:"investor"` // First + Last
+	Units       	decimal.Decimal 	`json:"units"`
+	LastChanged 	time.Time       	`json:"last_changed"`
+}
+
+type CapHistoryEntry struct {
+	Fund      int             `json:"fund"`
+	Buyer     string          `json:"buyer"`
+	Seller    string          `json:"seller"`
+	Units     decimal.Decimal `json:"units"`
+	CreatedOn time.Time       `json:"created_on"`
 }
 
 func (c *Cap) String() string {
@@ -34,11 +47,11 @@ func (c *Cap) String() string {
 	}
 	units := "<nil>"
 	if c.Units != nil {
-		units = fmt.Sprintf("%f", *c.Units)
+		units = fmt.Sprintf("%s", *c.Units)
 	}
 
-	return fmt.Sprintf("Cap[ID=%d, FundID=%s, BuyerID=%s, SellerID=%s, Units=%s, CreatedOn=%s, LastModified=%s]",
-		c.ID, fund, buyer, seller, units, c.CreatedOn.Format(time.RFC3339), c.LastModified.Format(time.RFC3339))
+	return fmt.Sprintf("Cap[ID=%d, FundID=%s, BuyerID=%s, SellerID=%s, Units=%s, CreatedOn=%s]",
+		c.ID, fund, buyer, seller, units, c.CreatedOn.Format(time.RFC3339))
 }
 
 func (c *Cap) Validate() error {
@@ -67,4 +80,9 @@ func (c *Cap) Validate() error {
 	}
 
 	return nil
+}
+
+func (c *InvestorCapEntry) String() string {
+	return fmt.Sprintf("CapEntry[Investor=%s, Units=%s, LastChanged=%s]",
+		c.InvestorName, c.Units.String(), c.LastChanged.Format(time.RFC3339))
 }
