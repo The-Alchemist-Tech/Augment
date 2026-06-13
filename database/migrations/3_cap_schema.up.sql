@@ -5,7 +5,6 @@ CREATE TABLE `cap` (
   `seller` int(11) unsigned NOT NULL,
   `units` DECIMAL(14,4) NOT NULL,
   `created_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `last_modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
 
   -- Define Foreign Keys

@@ -19,7 +19,7 @@ func main() {
 	
 	defer database.Close()
 
-	// Init app and routeer
+	// Init app and router
 	app := &app.App{
 		Router:   mux.NewRouter().StrictSlash(true),
 		Database: database,

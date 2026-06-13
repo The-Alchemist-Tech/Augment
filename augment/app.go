@@ -30,10 +30,10 @@ func (app *App) SetupRouter() {
 		HandlerFunc(cap.CreateTransfer)
 	app.Router.
 		Methods("GET").
-		Path("/cap/fund").
+		Path("/cap/fund"). // Use query param "id" with an interger for the fund ID (EG "/cap/fund?id=1")
 		HandlerFunc(cap.GetFundCap)
 	app.Router.
 		Methods("GET").
-		Path("/cap/fund/history").
+		Path("/cap/fund/history"). // Same query param as above - "/cap/fund/history?id=1"
 		HandlerFunc(cap.GetFundCapHistory)
 }

@@ -42,7 +42,6 @@ to, who transferred what to whom, and when it occurred.
 
 ## Improvements I Would Make For A Production Version
 - Log Levels
-- Robust validations (eg email)
 - Email the intended recipient to invite them to Augment when someone tries to transfer shares to an Investor that does not exist.
    - Temp hold on shares for X time until the person creates account or the go back to the original owner?
    - Not sure on regulation for what's possible here
@@ -51,3 +50,4 @@ to, who transferred what to whom, and when it occurred.
    - Pricing/most recent cost of transaction on the fund?
 - I would move some of the validations done in the db file (checking if a fund with the same name, a username, or email exists already) and into validations like cap does.
 - Add Swagger documentation
+- More user friendly error messages.
